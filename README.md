@@ -56,3 +56,11 @@ I hope you enjoy taking this course as much as I did creating it.  I'd love to h
 Thanks and happy automating!
 
 Ned
+--------
+
+export AWS_ACCESS_KEY_ID=your_access_key
+export AWS_SECRET_ACCESS_KEY=your_secret_key
+export AWS_DEFAULT_REGION=us-east-1
+
+export TF_VAR_aws_access_key_id=your_access_key
+export TF_VAR_aws_secret_access_key=your_secret_key
