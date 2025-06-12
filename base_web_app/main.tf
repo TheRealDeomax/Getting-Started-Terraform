@@ -4,7 +4,7 @@
 
 provider "aws" {
   # access_key and secret_key are removed for security; use environment variables or shared credentials file
-  region     = "us-east-1"
+  region = "us-east-1"
 }
 
 ##################################################################################
@@ -65,6 +65,13 @@ resource "aws_security_group" "nginx_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  # ssh access from anywhere
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   # outbound internet access
   egress {
@@ -81,9 +88,17 @@ resource "aws_instance" "nginx1" {
   instance_type          = "t3.micro"
   subnet_id              = aws_subnet.public_subnet1.id
   vpc_security_group_ids = [aws_security_group.nginx_sg.id]
-
-  user_data = <<EOF
+  iam_instance_profile   = aws_iam_instance_profile.ssm_instance_profile.name
+  key_name               = "my-ec2key" # Replace with the name of your key pair
+  user_data              = <<EOF
 #! /bin/bash
+yum install -y httpd amazon-ssm-agent
+sudo systemctl enable amazon-ssm-agent
+sudo systemctl start amazon-ssm-agent
+
+sudo sed -i 's/"Interval": *[0-9]\+/"Interval": 300/' /etc/amazon/ssm/amazon-ssm-agent.json
+sudo systemctl restart amazon-ssm-agent
+
 sudo amazon-linux-extras install -y nginx1
 sudo service nginx start
 sudo rm /usr/share/nginx/html/index.html
@@ -92,3 +107,34 @@ EOF
 
 }
 
+resource "aws_key_pair" "my_ec2key" {
+  key_name   = "my-ec2key"
+  public_key = file("./my-ec2key.pub")
+}
+
+resource "aws_iam_role" "ssm_role" {
+  name = "AmazonEC2RoleforSSM"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_policy_attachment" {
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ssm_instance_profile" {
+  name = "SSMInstanceProfile"
+  role = aws_iam_role.ssm_role.name
+}
