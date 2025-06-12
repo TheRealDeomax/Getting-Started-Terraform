@@ -19,4 +19,6 @@
 
 # working directory for web app
 /globo_web_app/*
-
+/base_web_app/.terraform
+/base_web_app/.terraform.lock.hcl
+mynotes.txt

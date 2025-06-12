@@ -3,8 +3,7 @@
 ##################################################################################
 
 provider "aws" {
-  access_key = "ACCESS_KEY"
-  secret_key = "SECRET_KEY"
+  # access_key and secret_key are removed for security; use environment variables or shared credentials file
   region     = "us-east-1"
 }
 
