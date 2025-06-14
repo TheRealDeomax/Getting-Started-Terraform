@@ -25,3 +25,5 @@ mynotes.txt
 base_web_app/tfplan
 base_web_app/my-ec2key
 base_web_app/my-ec2key.pub
+aws/*
+

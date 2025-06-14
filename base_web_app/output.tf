@@ -1,7 +1,4 @@
-# ec2 instance public ip address
-output "nginx_public_ip" {
-  value = aws_instance.nginx1.public_ip
-}
+
 output "amzn2_linux_ami" {
   value     = data.aws_ssm_parameter.amzn2_linux.value
   sensitive = true
@@ -34,3 +31,8 @@ output "public_subnet_id" {
 output "vpc_id" {
   value = aws_vpc.app.id
 }
+/* 
+output "nlb_dns_name" {
+  description = "The DNS name of the Network Load Balancer."
+  value       = aws_lb.app_nlb.dns_name
+} */

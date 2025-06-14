@@ -4,7 +4,7 @@
 
 provider "aws" {
   # access_key and secret_key are removed for security; use environment variables or shared credentials file
-  region = "us-east-1"
+  region = "us-east-2"
 }
 
 ##################################################################################
@@ -31,10 +31,15 @@ resource "aws_internet_gateway" "app" {
 
 }
 
+# Creates a public subnet within the specified VPC.
+# - cidr_block: The CIDR block for the subnet.
+# - vpc_id: The ID of the VPC to associate with this subnet.
+# - map_public_ip_on_launch: Automatically assigns a public IP address to instances launched in this subnet.
 resource "aws_subnet" "public_subnet1" {
   cidr_block              = "10.0.0.0/24"
   vpc_id                  = aws_vpc.app.id
   map_public_ip_on_launch = true
+
 }
 
 # ROUTING #
@@ -85,7 +90,7 @@ resource "aws_security_group" "nginx_sg" {
 # INSTANCES #
 resource "aws_instance" "nginx1" {
   ami                    = nonsensitive(data.aws_ssm_parameter.amzn2_linux.value)
-  instance_type          = "t3.micro"
+  instance_type          = "t3.small"
   subnet_id              = aws_subnet.public_subnet1.id
   vpc_security_group_ids = [aws_security_group.nginx_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.ssm_instance_profile.name
@@ -138,3 +143,72 @@ resource "aws_iam_instance_profile" "ssm_instance_profile" {
   name = "SSMInstanceProfile"
   role = aws_iam_role.ssm_role.name
 }
+/* 
+# Creates an AWS Network Load Balancer (NLB) named "app-nlb".
+# - Not internal (public-facing).
+# - Associated with the specified public subnet.
+# - Deletion protection is disabled.
+# NETWORK LOAD BALANCER
+resource "aws_lb" "app_nlb" {
+  name                       = "app-nlb"
+  internal                   = false
+  load_balancer_type         = "network"
+  subnets                    = [aws_subnet.public_subnet1.id]
+  enable_deletion_protection = false
+  security_groups            = [aws_security_group.nginx_sg.id]
+
+  tags = {
+    Name = "app-nlb"
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Creates an AWS Network Load Balancer (NLB) target group for TCP traffic on port 80.
+# Associates the target group with a VPC.
+#
+# Provisions an NLB listener on port 80 using the TCP protocol, forwarding traffic
+# to the defined target group.
+#
+# Attaches an EC2 instance (nginx1) to the target group, registering it as a target
+# on port 80.
+#
+# Resources:
+# - aws_lb_target_group.app_nlb_tg: Target group for NLB.
+# - aws_lb_listener.app_nlb_listener: Listener for NLB forwarding to the target group.
+# - aws_lb_target_group_attachment.app_nlb_attachment: Attaches EC2 instance to the target group.
+# -----------------------------------------------------------------------------
+resource "aws_lb_target_group" "app_nlb_tg" {
+  name     = "app-nlb-tg"
+  port     = 80
+  protocol = "TCP"
+  vpc_id   = aws_vpc.app.id
+
+}
+
+resource "aws_lb_listener" "app_nlb_listener" {
+  load_balancer_arn = aws_lb.app_nlb.arn
+  port              = 80
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_nlb_tg.arn
+  }
+
+
+}
+
+# Attaches an EC2 instance (nginx1) to the specified Application Load Balancer (ALB) target group.
+# - `target_group_arn`: ARN of the target group to attach the instance to.
+# - `target_id`: ID of the EC2 instance to register as a target.
+# - `port`: Port on which the target receives traffic from the load balancer.
+resource "aws_lb_target_group_attachment" "app_nlb_attachment" {
+  target_group_arn = aws_lb_target_group.app_nlb_tg.arn
+  target_id        = aws_instance.nginx1.id
+  port             = 80
+
+
+
+}
+
+ */
